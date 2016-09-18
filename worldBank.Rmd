@@ -1,0 +1,179 @@
+---
+title: "World Bank stats"
+author: "Tinniam V Ganesh"
+date: "September 17, 2016"
+output: html_document
+---
+
+# Analyzing World Bank data with WDI and googleVis
+Recently I was surfing the web, when I came across a real cool post [New R package to access World Bank data](https://www.r-bloggers.com/new-r-package-to-access-world-bank-data/), by Markus Gesmann on using googleVis and motion charts with World Bank Data. The post also introduced me to Hans Rosling, Professor of Sweden's Karolinska Institute. Hans Rosling, the creator of the famous [Gapminder chart](https://www.gapminder.org/world/), the "Heath and Wealth of Nations" displays global trends through animated charts (do take a look). As they say in Hans Rosling's hands, data sings. Take a look at some of his Ted talks for e.g. [Hans Rosling:New insights on poverty](https://www.ted.com/talks/hans_rosling_reveals_new_insights_on_poverty). Rosling developed the breakthrough software behind his visualizations in the Gapminder. The free software - which can be loaded with any data - was purchased by Google in March 2007.
+
+In this post I recreate some of the Gapminder charts with the help of R packages WDI and googleVis. The WDI package provides a set of really useful functions to get the data based on the World Bank Data indicator.googleVis provides motion charts in which the data is animated.
+
+
+```{r cache=TRUE}
+library(WDI)
+library(ggplot2)
+library(googleVis)
+library(plyr)
+```
+
+## Get the data from 1960 to 2016 for the following
+
+1. Population
+2. GDP in US $
+3. Life Expectancy at birth (Years)
+4. GDP Per capita income
+5. Fertility rate (Births per woman)
+
+```{r cache=TRUE}
+# World population total
+population = WDI(indicator='SP.POP.TOTL', country="all",start=1960, end=2016)
+# GDP in US $
+gdp= WDI(indicator='NY.GDP.MKTP.CD', country="all",start=1960, end=2016)
+# Life expectancy at birth (Years)
+lifeExpectancy= WDI(indicator='SP.DYN.LE00.IN', country="all",start=1960, end=2016)
+# GDP Per capita
+income = WDI(indicator='NY.GDP.PCAP.PP.CD', country="all",start=1960, end=2016)
+# Fertility rate (births per woman)
+fertility = WDI(indicator='SP.DYN.TFRT.IN', country="all",start=1960, end=2016)
+# Poverty head count
+poverty= WDI(indicator='SI.POV.2DAY', country="all",start=1960, end=2016)
+```
+
+## Rename the columns
+```{r cache=TRUE}
+names(population)[3]="Total population"
+names(lifeExpectancy)[3]="Life Expectancy (Years)"
+names(gdp)[3]="GDP (US$)"
+names(income)[3]="GDP per capita income"
+names(fertility)[3]="Fertility (Births per woman)"
+names(poverty)[3]="Poverty headcount ratio"
+```
+
+
+## Join the data frames
+Join the individual data frames to one large wide data frame with all the indicators for the countries
+```{r cache=TRUE}
+j1 <- join(population, gdp)
+j2 <- join(j1,lifeExpectancy)
+j3 <- join(j2,income)
+j4 <- join(j3,poverty)
+wbData <- join(j4,fertility)
+```
+
+## Use WDI_data 
+Use WDI_data to get the list of indicators and the countries. Join the countries and region
+```{r cache=TRUE}
+#This returns  list of 2 matrixes
+wdi_data =WDI_data
+# The 1st matrix is the list is the set of all World Bank Indicators
+indicators=wdi_data[[1]]
+# The 2nd  matrix gives the set of countries and regions
+countries=wdi_data[[2]]
+df = as.data.frame(countries)
+aa <- df$region != "Aggregates"
+# Remove the aggregates
+countries_df <- df[aa,]
+# Subset from the development data only those corresponding to the countries
+bb = subset(wbData, country %in% countries_df$country)
+cc = join(bb,countries_df)
+dd = complete.cases(cc)
+developmentDF = cc[dd,]
+```
+
+## Create a motion chart
+```{r cache=TRUE}
+gg<- gvisMotionChart(cc,
+                                idvar = "country",
+                                timevar = "year",
+                                xvar = "GDP (US$)",
+                                yvar = "Life Expectancy (Years)",
+                                sizevar ="Total population",
+                                colorvar = "region")
+plot(gg)
+cat(gg$html$chart, file="chart11.html")
+
+```
+
+```{r}
+cat(gg$html$chart, file="chart1.html")
+```
+
+## Get the data for the 2nd set of indicators
+
+1. Population
+2. GDP in US$
+3. Access to electricity (% population)
+4. Electricity consumption KWh per capita
+5. CO2 emissions
+```{r cache=TRUE}
+# World population
+population = WDI(indicator='SP.POP.TOTL', country="all",start=1960, end=2016)
+# GDP in US $
+gdp= WDI(indicator='NY.GDP.MKTP.CD', country="all",start=1960, end=2016)
+# Access to electricity (% population)
+elecAccess= WDI(indicator='EG.ELC.ACCS.ZS', country="all",start=1960, end=2016)
+# Electric power consumption Kwh per capita
+elecConsumption= WDI(indicator='EG.USE.ELEC.KH.PC', country="all",start=1960, end=2016)
+#CO2 emissions
+co2Emissions= WDI(indicator='EN.ATM.CO2E.KT', country="all",start=1960, end=2016)
+# Access to sanitation (% population)
+sanitationAccess= WDI(indicator='SH.STA.ACSN', country="all",start=1960, end=2016)
+
+```
+
+## Rename the columns
+```{r cache=TRUE}
+names(population)[3]="Total population"
+names(gdp)[3]="GDP US($)"
+names(elecAccess)[3]="Access to Electricity (% popn)"
+names(elecConsumption)[3]="Electric power consumption (KWH per capita)"
+names(co2Emissions)[3]="CO2 emisions"
+names(sanitationAccess)[3]="Access to sanitation(% popn)"
+```
+
+## Join the individual data frames 
+Join the individual data frames to one large wide data frame with all the indicators for the countries
+```{r cache=TRUE}
+j1 <- join(population, gdp)
+j2 <- join(j1,elecAccess)
+j3 <- join(j2,elecConsumption)
+j4 <- join(j3,co2Emissions)
+wbData1 <- join(j4,sanitationAccess)
+
+```
+
+## Use WDI_data 
+Use WDI_data to get the list of indicators and the countries. Join the countries and region
+```{r cache=TRUE}
+#This returns  list of 2 matrixes
+wdi_data =WDI_data
+# The 1st matrix is the list is the set of all World Bank Indicators
+indicators=wdi_data[[1]]
+# The 2nd  matrix gives the set of countries and regions
+countries=wdi_data[[2]]
+df = as.data.frame(countries)
+aa <- df$region != "Aggregates"
+# Remove the aggregates
+countries_df <- df[aa,]
+# Subset from the development data only those corresponding to the countries
+ee = subset(wbData1, country %in% countries_df$country)
+ff = join(ee,countries_df)
+
+```
+
+## Create and display the motion chart
+```{r cache=TRUE}
+gg1<- gvisMotionChart(ff,
+                                idvar = "country",
+                                timevar = "year",
+                                xvar = "GDP US($)",
+                                yvar = "Access to Electricity (% popn)",
+                                sizevar ="Total population",
+                                colorvar = "region")
+plot(gg1)
+cat(gg1$html$chart, file="chart21.html")
+```
+
+
